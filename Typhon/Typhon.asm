@@ -215,18 +215,25 @@ section '.code' code readable executable
 
 rd 500; для антивирусов
 
+_OnAfterWoG db 'OnAfterWoG', 0
+DLL_PROCESS_ATTACH = 1
+
 match =FALSE, COPYMODE
 {
-proc TYPHON
-; Хук AfterWoG
-    mov byte [701013h], 0E9h; Хук
-    mov dword [701014h], AfterWog-(701013h+5); AfterWog
-    mov dword [761381h], 39859587; Заглушить вог-функцию ResetMonTable,
-    mov dword [761385h], 3271623302; мешающую редактору существ
-    mov dword [71180Fh+1], LoadCreatures
+proc TYPHON, hDll, Reason, Reserved
+    .if dword [Reason] = DLL_PROCESS_ATTACH
+      push _OnAfterWoG
+      push OnAfterWoG
+      call [RegisterHandler]
+      
+      mov dword [761381h], 39859587; Заглушить вог-функцию ResetMonTable,
+      mov dword [761385h], 3271623302; мешающую редактору существ
+      mov dword [71180Fh+1], LoadCreatures
+    .endif
+    
     xor eax, eax
     inc eax
-    ret 0Ch
+    ret
 endp
 }
 
@@ -255,16 +262,21 @@ db 1 dup 0
 section '.idata' data readable
 data import
 ; Импортируемые процедуры
-  library kernel32,'kernel32.dll'
+  library kernel32, 'kernel32.dll',\
+    era, 'era.dll'
 
   import kernel32,\
-	 CreateFileA,'CreateFileA',\
-	 GetFileSize, 'GetFileSize',\
-	 VirtualAlloc, 'VirtualAlloc',\
-	 ReadFile, 'ReadFile',\
-	 CloseHandle, 'CloseHandle',\
-	 VirtualFree, 'VirtualFree',\
-	 WriteFile, 'WriteFile'
+	  CreateFileA,'CreateFileA',\
+	  GetFileSize, 'GetFileSize',\
+	  VirtualAlloc, 'VirtualAlloc',\
+	  ReadFile, 'ReadFile',\
+	  CloseHandle, 'CloseHandle',\
+	  VirtualFree, 'VirtualFree',\
+	  WriteFile, 'WriteFile'
+
+  import era,\
+    RegisterHandler, 'RegisterHandler',\
+    RedirectMemoryBlock, 'RedirectMemoryBlock'
 
 end data
 

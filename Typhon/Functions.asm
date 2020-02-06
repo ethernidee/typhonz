@@ -1,5 +1,5 @@
 ; ГЛАВНАЯ ПРОЦЕДУРА
-proc AfterWog; после инициализации WoG
+proc OnAfterWoG uses esi edi ebx, Event ; после инициализации WoG
 ; ставим хуки
        mov esi, Table_Hooks
 .LoopHooks:
@@ -148,7 +148,7 @@ proc AfterWog; после инициализации WoG
        mov dword [428885h+1], eax
        mov dword [4288C4h+2], eax
 ; Убрать проверку, запрещающую использование ERM-команд Z
-       mov byte [741ECDh], 0EBh
+       ; mov byte [741ECDh], 0EBh ; не требуется, убрана в Эра 2.9.9
 ; Подгрузка twcrport.def из Typhon.pac для WoG-диалога опыта армии:
        stdcall CopyText, LODDEF, 792968h; скопировать строку
 ; Копирование структуры основных обитателей городов:
@@ -191,8 +191,7 @@ proc AfterWog; после инициализации WoG
        mov dword [750D00h], eax
        mov dword [750D2Fh], eax
        mov dword [750D5Eh], eax
-; Возврат в код игры:
-       push 61A884h
+; Возврат:
        ret
 endp
 
@@ -242,9 +241,6 @@ proc CopyCrTable; копирование таблицы существ в файл настроек Тифона (особый реж
        rep movsd
        stdcall SaveFile, MonstersSetup_mop, [MonTable_Buffer], 254000
 ; Возврат в код игры:
-       popad
-       pop ebx
-       leave
        ret
 endp
 
@@ -387,7 +383,6 @@ proc LoadCreatures
        pop ecx
        call vFree
        mov dword [27F9A34h], 0
-       popad
        ret
 endp
 
