@@ -295,9 +295,9 @@ section '.rsrc' data readable resource
 	   1,LANG_NEUTRAL,version
 
   versioninfo version,VOS__WINDOWS32,VFT_DLL,VFT2_UNKNOWN,LANG_ENGLISH+SUBLANG_DEFAULT,0,\
-	      'FileDescription','Typhon project',\
-	      'LegalCopyright','Copyright © 2017-2019 the Master.',\
-	      'FileVersion','2.7',\
-	      'ProductVersion','Typhon'
+	      'FileDescription','TyphonZ project',\
+	      'LegalCopyright','Copyright © 2017-2020 the Master & co.',\
+	      'FileVersion','1.0.0',\
+	      'ProductVersion','TyphonZ'
 
 section '.reloc' data readable discardable fixups
