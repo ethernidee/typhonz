@@ -65,6 +65,7 @@ proc OnAfterWoG uses esi edi ebx, Event ; после инициализации WoG
        add esi, 5
        cmp esi, ChangeCrexbon
        jnz @b
+       stdcall [RedirectMemoryBlock], 7D0C90h, 196 * sizeof._Creature_, MonTable
 ; Поправки для Оборотня:
        mov dword [76761Ah], 194*sizeof._Creature_+MonTable+_Creature_.Здоровье;  HP
        mov dword [767699h], 194*sizeof._Creature_+MonTable+_Creature_.Название_ед_ч; имя

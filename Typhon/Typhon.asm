@@ -228,21 +228,10 @@ proc TYPHON, hDll, Reason, Reserved
   ; только при подключении dll к процессу, не к потокам
   .if dword [Reason] = DLL_PROCESS_ATTACH
     ; регистрируем обработчики событий
-    push _OnAfterWoG
-    push OnAfterWoG
-    call [RegisterHandler]
-
-    push _OnCustomDialogEvent
-    push OnCustomDialogEvent
-    call [RegisterHandler]
-
-    push _OnBeforeBattleAction
-    push OnBeforeBattleAction
-    call [RegisterHandler]
-
-    push _OnAfterBattleAction
-    push OnAfterBattleAction
-    call [RegisterHandler]
+    stdcall [RegisterHandler], OnAfterWoG,           _OnAfterWoG
+    stdcall [RegisterHandler], OnCustomDialogEvent,  _OnCustomDialogEvent
+    stdcall [RegisterHandler], OnBeforeBattleAction, _OnBeforeBattleAction
+    stdcall [RegisterHandler], OnAfterBattleAction,  _OnAfterBattleAction
     
     mov dword [761381h], 39859587; Заглушить вог-функцию ResetMonTable,
     mov dword [761385h], 3271623302; мешающую редактору существ
