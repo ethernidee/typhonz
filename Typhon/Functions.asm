@@ -241,6 +241,9 @@ proc CopyCrTable; копирование таблицы существ в файл настроек Тифона (особый реж
        rep movsd
        stdcall SaveFile, MonstersSetup_mop, [MonTable_Buffer], 254000
 ; Возврат в код игры:
+       popad
+       pop ebx
+       leave
        ret
 endp
 
@@ -259,7 +262,7 @@ proc LoadCreatures
        pop ecx
        call vFree
        jmp .файл_уже_был_загружен
-.файл_ещё_не_загружен:	
+.файл_ещё_не_загружен:  
        mov [MonTable_Buffer], eax; передать адрес буфера с загруженным файлом
 .файл_уже_был_загружен: 
        mov edi, [MonTable_Buffer]; получить адрес буфера
@@ -383,69 +386,77 @@ proc LoadCreatures
        pop ecx
        call vFree
        mov dword [27F9A34h], 0
+       popad
        ret
 endp
 
-proc CallTrigger
-; получаем номер триггера
-       mov esi, [27C1950h]
-.if esi = 30371 & dword [27F9964h] = 1986; диалог №1986
-	     mov eax, dword [27F9968h]
-      .if signed eax > 4 & signed eax < 9 & dword [27F996Ch] <> 13
-	     sub eax, 5
-	     mov ecx, [Адрес_параметров_альтерветки_для_диалога_постройки_альтерветок]
-	     mov eax, [eax * 4 + ecx]
-	     xor ecx, ecx
-	     xor edx, edx
-	     inc edx
-	     cmp dword [27F996Ch], 12
-	     jnz .правый_клик
-	     xchg ecx, edx
-	  .правый_клик:
-	     stdcall OpenCreatureWindow, eax, 119, 20, ecx, edx
-      .elseif (eax = 11 | eax = 13) & dword [27F996Ch] = 13
-	     mov dword [887658h], 1; CloseDialog
-      .endif
-.elseif esi = 30303; Битва_!_перед_действием
-       mov ebx, dword [699420h]; COMBAT_MANAGER; ebx теперь хранит CombatManager
-       mov eax, [ebx + 3Ch]; Тип_действия
-       mov [Тип_действия_в_бою], eax
-       call Получить_адрес_структуры_стека_совершающего_действие
-       mov [Адрес_структуры_стека_совершающего_действие], eax
-       call Получить_адрес_структуры_стека_на_которого_направлено_действие
-       mov [Адрес_структуры_стека_на_которого_направлено_действие], eax
-.elseif esi = 30304; Битва_!_после_действия
-     mov ebx, dword [699420h]; COMBAT_MANAGER; ebx теперь хранит CombatManager
-     mov edi, [Адрес_структуры_стека_совершающего_действие]
-     mov esi, [Адрес_структуры_стека_на_которого_направлено_действие]
+proc OnCustomDialogEvent uses esi edi ebx, Event
+  .if dword [27F9964h] = 1986; диалог №1986
+    mov eax, dword [27F9968h]
+    
+    .if signed eax > 4 & signed eax < 9 & dword [27F996Ch] <> 13
+         sub eax, 5
+         mov ecx, [Адрес_параметров_альтерветки_для_диалога_постройки_альтерветок]
+         mov eax, [eax * 4 + ecx]
+         xor ecx, ecx
+         xor edx, edx
+         inc edx
+         cmp dword [27F996Ch], 12
+         jnz .правый_клик
+         xchg ecx, edx
+      .правый_клик:
+         stdcall OpenCreatureWindow, eax, 119, 20, ecx, edx
+    .elseif (eax = 11 | eax = 13) & dword [27F996Ch] = 13
+         mov dword [887658h], 1; CloseDialog
+    .endif
+  .endif
+
+  ret
+endp
+
+proc OnBeforeBattleAction uses esi edi ebx, Event
+  mov ebx, dword [699420h]; COMBAT_MANAGER; ebx теперь хранит CombatManager
+  mov eax, [ebx + 3Ch]; Тип_действия
+  mov [Тип_действия_в_бою], eax
+  call Получить_адрес_структуры_стека_совершающего_действие
+  mov [Адрес_структуры_стека_совершающего_действие], eax
+  call Получить_адрес_структуры_стека_на_которого_направлено_действие
+  mov [Адрес_структуры_стека_на_которого_направлено_действие], eax
+  ret
+endp
+
+proc OnAfterBattleAction uses esi edi ebx, Event
+  mov ebx, dword [699420h]; COMBAT_MANAGER; ebx теперь хранит CombatManager
+  mov edi, [Адрес_структуры_стека_совершающего_действие]
+  mov esi, [Адрес_структуры_стека_на_которого_направлено_действие]
+  
   .if [Тип_действия_в_бою] = 7 & signed esi > -1 & signed [esi + Структура_стека.Текущее_количество] > 0 & [edi + Структура_стека.Тип_существа] <> 149; CR_Стрелковая_Башня
-     mov eax, [esi + Структура_стека.Тип_существа]
-     cmp byte [eax + RangeRetaliation_Table], 0
-     je .нет_способности
+    mov eax, [esi + Структура_стека.Тип_существа]
+    cmp byte [eax + RangeRetaliation_Table], 0
+    je .нет_способности
   .есть_способность:
-     push 0
-     mov ecx, esi
-     mov eax, 442610h; проверка возможности стрельбы
-     call eax
-     test al, al
-     je .нет_способности
-     push edi
-     mov ecx, esi
-     mov eax, 43F620h; Стрельба_отряда_по_отряду
-     call eax
- ; фикс бага стрельбы уже в мёртвом состоянии, если стеку выпала Мораль
-   .if signed [edi + Структура_стека.Текущее_количество] < 1; стек убит
-     bt [edi + Структура_стека.Флаги], 24; Флаг_Отряду_выпала_Мораль; проверка на выпавшую мораль
-     jnb .нет_Морали
-     mov dword [ebx + 3Ch], 12; Отмена_действия_отряда
-  .нет_Морали:
-   .endif
+    push 0
+    mov ecx, esi
+    mov eax, 442610h; проверка возможности стрельбы
+    call eax
+    test al, al
+    je .нет_способности
+    push edi
+    mov ecx, esi
+    mov eax, 43F620h; Стрельба_отряда_по_отряду
+    call eax
+    
+    ; фикс бага стрельбы уже в мёртвом состоянии, если стеку выпала Мораль
+    .if signed [edi + Структура_стека.Текущее_количество] < 1; стек убит
+      bt [edi + Структура_стека.Флаги], 24; Флаг_Отряду_выпала_Мораль; проверка на выпавшую мораль
+      jnb .нет_Морали
+      mov dword [ebx + 3Ch], 12; Отмена_действия_отряда
+    .нет_Морали:
+    .endif
   .нет_способности:
   .endif
-.endif
-; выполнение затёртого кода
-       mov ecx, 28AAFD0h
-       ret
+
+  ret
 endp
 
 proc Получить_адрес_структуры_стека_совершающего_действие
@@ -657,20 +668,20 @@ proc SaveFile
        push 1
        push 0C0000000h
        push   dword    [ebp+08h]
-		call	[CreateFileA]
-		mov	edi,eax
-		push	00000000h
-		lea	ecx,[ebp+10h]
-		push	ecx
-		push   dword	[ebp+10h]
-		push   dword	[ebp+0Ch]
-		push	eax
-		call	[WriteFile]
-		push	edi
-		call	[CloseHandle]
-		pop	edi
-		pop	ebp
-		retn	000Ch
+            call  [CreateFileA]
+            mov   edi,eax
+            push  00000000h
+            lea   ecx,[ebp+10h]
+            push  ecx
+            push   dword      [ebp+10h]
+            push   dword      [ebp+0Ch]
+            push  eax
+            call  [WriteFile]
+            push  edi
+            call  [CloseHandle]
+            pop   edi
+            pop   ebp
+            retn  000Ch
 endp
 
 proc MemAlloc
@@ -696,7 +707,7 @@ proc vFree; thiscall
        push ecx
        call [VirtualFree]
        retn
-endp	
+endp  
 
 proc lfcnt
        xor eax, eax ; set counter to zero
@@ -704,7 +715,7 @@ proc lfcnt
        sub ecx, 1
        jmp @f
     pre:
-       add eax, 1	      ; add 1 to return value if LF found
+       add eax, 1       ; add 1 to return value if LF found
      @@:
        add ecx, 1
        cmp byte [ecx], 0   ; test for zero terminator
@@ -717,23 +728,23 @@ proc lfcnt
 endp
 
 proc lineout string;, buffer
-	mov ecx, [string]; адрес строки
-	mov edx, esi; адрес буфера
+      mov ecx, [string]; адрес строки
+      mov edx, esi; адрес буфера
      @@:
-	mov al, [ecx]; символ
+      mov al, [ecx]; символ
       .if al <> 0Dh; игнорируем отступы Win
-	mov [edx], al
-	inc edx
+      mov [edx], al
+      inc edx
       .endif
-	inc ecx
-	test al, al
-	jnz @b
-	mov word [edx-1], 0A0Dh
-	sub edx, esi
-	inc edx
-	add esi, edx
-	mov eax, edx
-	ret
+      inc ecx
+      test al, al
+      jnz @b
+      mov word [edx-1], 0A0Dh
+      sub edx, esi
+      inc edx
+      add esi, edx
+      mov eax, edx
+      ret
 endp
 
 
@@ -2185,16 +2196,16 @@ endp
 
 
 proc Настройка_прироста_при_создании_альтерветки_в_городе uses edi esi, номер_выбранного_существа, номер_прежнего_существа
-	mov edi, [69954Ch]
-	mov edi, [edi+38h]
-	mov esi, [номер_выбранного_существа]
+      mov edi, [69954Ch]
+      mov edi, [edi+38h]
+      mov esi, [номер_выбранного_существа]
 ; вычитание прироста от невыбранных существ
-	stdcall Регулировка_прироста_альтерветок, edi, esi, [номер_прежнего_существа], 17, -1
-	stdcall Регулировка_прироста_альтерветок, edi, esi, [номер_прежнего_существа], 20, -1
+      stdcall Регулировка_прироста_альтерветок, edi, esi, [номер_прежнего_существа], 17, -1
+      stdcall Регулировка_прироста_альтерветок, edi, esi, [номер_прежнего_существа], 20, -1
 ; добавление прироста от выбранных
-	stdcall Регулировка_прироста_альтерветок, edi, esi, esi, 17, +1
-	stdcall Регулировка_прироста_альтерветок, edi, esi, esi, 20, +1
-	ret
+      stdcall Регулировка_прироста_альтерветок, edi, esi, esi, 17, +1
+      stdcall Регулировка_прироста_альтерветок, edi, esi, esi, 20, +1
+      ret
 endp
 
 
@@ -2204,44 +2215,44 @@ local Search_Object_Coordinate_X  :DWORD
 local Search_Object_Coordinate_Y  :DWORD
 local Search_Object_Coordinate_L  :DWORD
 
-	mov eax, [TownStr]
-	movsx ebx, byte [eax + 1]
-	push -1 [DwType]
-	mov eax, 72F468h; CalculateObjects
-	call eax
-	add esp, 8
-	test eax, eax
-	je .нет_двеллингов
+      mov eax, [TownStr]
+      movsx ebx, byte [eax + 1]
+      push -1 [DwType]
+      mov eax, 72F468h; CalculateObjects
+      call eax
+      add esp, 8
+      test eax, eax
+      je .нет_двеллингов
 ; подсчёт жилищ, которые принадлежат игроку
-	xor esi, esi; счётчик двеллингов для регулировки прироста
-	xchg edi, eax; счётчик всех двеллингов
-	or [Search_Object_Coordinate_X], -1
+      xor esi, esi; счётчик двеллингов для регулировки прироста
+      xchg edi, eax; счётчик всех двеллингов
+      or [Search_Object_Coordinate_X], -1
      .repeat
-	mov eax, 72F67Bh
-	ccall eax, [DwType], -1, addr Search_Object_Coordinate_X, addr Search_Object_Coordinate_Y, addr Search_Object_Coordinate_L, -1
-	push [Search_Object_Coordinate_L] [Search_Object_Coordinate_Y] [Search_Object_Coordinate_X]
-	mov eax, 711E7Fh
-	call eax
-	add esp, 0Ch
-	push eax
-	mov eax, 7112C3h
-	call eax
-	pop ecx
-	imul eax, dword [eax], 5Ch
-	mov ecx,[699538h]
-	add eax,[ecx+0004E39Ch]
+      mov eax, 72F67Bh
+      ccall eax, [DwType], -1, addr Search_Object_Coordinate_X, addr Search_Object_Coordinate_Y, addr Search_Object_Coordinate_L, -1
+      push [Search_Object_Coordinate_L] [Search_Object_Coordinate_Y] [Search_Object_Coordinate_X]
+      mov eax, 711E7Fh
+      call eax
+      add esp, 0Ch
+      push eax
+      mov eax, 7112C3h
+      call eax
+      pop ecx
+      imul eax, dword [eax], 5Ch
+      mov ecx,[699538h]
+      add eax,[ecx+0004E39Ch]
        .if [eax + _Dwelling_.хозяин] = bl
-	mov eax, [eax+_Dwelling_.тип_монстров_в_слоте_0]
-	cmp eax, [номер_существа_в_двеллинге]
-	jnz @f
-	add esi, [sum]
+      mov eax, [eax+_Dwelling_.тип_монстров_в_слоте_0]
+      cmp eax, [номер_существа_в_двеллинге]
+      jnz @f
+      add esi, [sum]
       @@:
        .endif
-	dec edi
+      dec edi
      .until ZERO?
-	stdcall Регулирование_прироста_существ, [TownStr], [номер_выбранного_существа], esi
+      stdcall Регулирование_прироста_существ, [TownStr], [номер_выбранного_существа], esi
 .нет_двеллингов:
-	ret
+      ret
 endp
 
 proc CopyText

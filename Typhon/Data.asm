@@ -10,7 +10,6 @@ match =FALSE, COPYMODE
 {
 Table_Hooks:
       Hook 4EDE90h, LoadCreatures,		  TCall; загрузка параметров существ
-      Hook 74C82Ah, CallTrigger,		  TCall; хук на все триггеры
       Hook 4FDF5Bh, SetupRandomDwellings,	  TCall; перед настройкой случайных жилищ
       Hook 74C7DDh, MapInstruction,		  TCall; инструкция карты
       Hook 760F07h, SaveParam,			  TJump; сохранение данных

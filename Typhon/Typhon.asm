@@ -215,25 +215,44 @@ section '.code' code readable executable
 
 rd 500; для антивирусов
 
-_OnAfterWoG db 'OnAfterWoG', 0
+_OnAfterWoG           db 'OnAfterWoG', 0
+_OnCustomDialogEvent  db 'OnCustomDialogEvent', 0
+_OnBeforeBattleAction db 'OnBeforeBattleAction', 0
+_OnAfterBattleAction  db 'OnAfterBattleAction', 0
+
 DLL_PROCESS_ATTACH = 1
 
 match =FALSE, COPYMODE
 {
 proc TYPHON, hDll, Reason, Reserved
-    .if dword [Reason] = DLL_PROCESS_ATTACH
-      push _OnAfterWoG
-      push OnAfterWoG
-      call [RegisterHandler]
-      
-      mov dword [761381h], 39859587; Заглушить вог-функцию ResetMonTable,
-      mov dword [761385h], 3271623302; мешающую редактору существ
-      mov dword [71180Fh+1], LoadCreatures
-    .endif
+  ; только при подключении dll к процессу, не к потокам
+  .if dword [Reason] = DLL_PROCESS_ATTACH
+    ; регистрируем обработчики событий
+    push _OnAfterWoG
+    push OnAfterWoG
+    call [RegisterHandler]
+
+    push _OnCustomDialogEvent
+    push OnCustomDialogEvent
+    call [RegisterHandler]
+
+    push _OnBeforeBattleAction
+    push OnBeforeBattleAction
+    call [RegisterHandler]
+
+    push _OnAfterBattleAction
+    push OnAfterBattleAction
+    call [RegisterHandler]
     
-    xor eax, eax
-    inc eax
-    ret
+    mov dword [761381h], 39859587; Заглушить вог-функцию ResetMonTable,
+    mov dword [761385h], 3271623302; мешающую редактору существ
+    mov dword [71180Fh+1], LoadCreatures
+  .endif
+  
+  ; возвращаем успех инициализации dll
+  xor eax, eax
+  inc eax
+  ret
 endp
 }
 
