@@ -498,12 +498,7 @@ L006369BB:
        retn
 endp
 
-proc MapInstruction
-; выполнение затёртого кода
-       push 1
-       mov eax, 72C8B1h
-       call eax
-       pop ecx
+proc OnBeforeErmInstructions uses esi edi ebx, Event
 ; 6977e8 - адрес оригинальной структуры дерева построек (8*44*9)
        stdcall LoadFile, TownsSetup_mop
        xchg ebx, eax

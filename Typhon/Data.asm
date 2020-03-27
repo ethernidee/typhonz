@@ -11,8 +11,8 @@ match =FALSE, COPYMODE
 Table_Hooks:
       Hook 4EDE90h, LoadCreatures,		  TCall; загрузка параметров существ
       Hook 4EDE90h, LoadCreatures,		  TCall; загрузка параметров существ
+      Hook 4FDF5Bh, SetupRandomDwellings,   TCall; перед настройкой случайных жилищ
       Hook 4FDF5Bh, SetupRandomDwellings,	  TCall; перед настройкой случайных жилищ
-      Hook 74C7DDh, MapInstruction,		  TCall; инструкция карты
       Hook 760F07h, SaveParam,			  TJump; сохранение данных
       Hook 7614B3h, LoadParam,			  TJump; загрузка данных
       Hook 5410FDh, MonsterRandomGeneration,	  TJump; запрет из таблицы запрета

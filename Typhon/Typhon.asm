@@ -215,10 +215,11 @@ section '.code' code readable executable
 
 rd 500; для антивирусов
 
-_OnAfterWoG           db 'OnAfterWoG', 0
-_OnCustomDialogEvent  db 'OnCustomDialogEvent', 0
-_OnBeforeBattleAction db 'OnBeforeBattleAction', 0
-_OnAfterBattleAction  db 'OnAfterBattleAction', 0
+_OnAfterWoG              db 'OnAfterWoG', 0
+_OnCustomDialogEvent     db 'OnCustomDialogEvent', 0
+_OnBeforeBattleAction    db 'OnBeforeBattleAction', 0
+_OnAfterBattleAction     db 'OnAfterBattleAction', 0
+_OnBeforeErmInstructions db 'OnBeforeErmInstructions', 0
 
 DLL_PROCESS_ATTACH = 1
 
@@ -228,10 +229,11 @@ proc TYPHON, hDll, Reason, Reserved
   ; только при подключении dll к процессу, не к потокам
   .if dword [Reason] = DLL_PROCESS_ATTACH
     ; регистрируем обработчики событий
-    stdcall [RegisterHandler], OnAfterWoG,           _OnAfterWoG
-    stdcall [RegisterHandler], OnCustomDialogEvent,  _OnCustomDialogEvent
-    stdcall [RegisterHandler], OnBeforeBattleAction, _OnBeforeBattleAction
-    stdcall [RegisterHandler], OnAfterBattleAction,  _OnAfterBattleAction
+    stdcall [RegisterHandler], OnAfterWoG,              _OnAfterWoG
+    stdcall [RegisterHandler], OnCustomDialogEvent,     _OnCustomDialogEvent
+    stdcall [RegisterHandler], OnBeforeBattleAction,    _OnBeforeBattleAction
+    stdcall [RegisterHandler], OnAfterBattleAction,     _OnAfterBattleAction
+    stdcall [RegisterHandler], OnBeforeErmInstructions, _OnBeforeErmInstructions
     
     mov dword [761381h], 39859587; Заглушить вог-функцию ResetMonTable,
     mov dword [761385h], 3271623302; мешающую редактору существ
